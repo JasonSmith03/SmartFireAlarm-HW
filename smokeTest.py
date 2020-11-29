@@ -25,8 +25,8 @@ def tmp36_temperature_C(tempSensor):
 #   print('Raw ADC Value: ', lmt84.value)
 #   print('ADC Voltage: ' + str(lmt84.voltage) + 'V')
     millivolts = (lmt84.voltage) * 1000
-    print("VOLTAGE: {}V".format(lmt84.voltage))
-    print("MILLIVOLTAGE: {}mV".format(millivolts))
+#     print("VOLTAGE: {}V".format(lmt84.voltage))
+#     print("MILLIVOLTAGE: {}mV".format(millivolts))
     tempC = ((5.506 - math.sqrt(math.pow(-5.506, 2) + (4 * 0.00176 * (870.6 - millivolts))))/(2 * -0.00176)) + 30 #LMT84 temp sensor transfer function
     return tempC
 
@@ -41,6 +41,7 @@ def calibration(mqSensor):
 mqSensor = 0 #variable to store sensor value
 print("Calibrating...")
 calibrateVal = calibration(mqSensor)
+time.sleep(5.0)
 #get the average value
 mqAvgVal = calibrateVal / 500
 #calculate the sensing resistance in clean air
@@ -56,8 +57,17 @@ while True:
     # Convert to Fahrenheit.
     temp_F = (temp_C * 9/5) + 32
     
+#     LPGm = (math.log10(0.27/0.8))/(math.log10(10000/1000))
+#     LPGb = math.log10(0.8) + LPGm * math.log10(1000)
+    
     LPGm = -0.47
     LPGb = 1.31
+    
+    SMOKEm = (math.log10(0.5/1.8))/(math.log10(10000/1000))
+    SMOKEb = math.log10(1.8) + SMOKEm * math.log10(1000)
+    
+    COm = (math.log10(1.5/3.1))/(math.log10(10000/1000))
+    COb = math.log10(3.1) + COm * math.log10(1000)
     
     #digital value from detection
     mqValue = mq.value
@@ -68,12 +78,24 @@ while True:
     #log of ratio to calculate ppm
     ratio = math.log10(ratio1)
     
+    #LPG value in ppm
     LPGratio = (ratio - LPGb)/LPGm
     LPGppm = math.pow(10, LPGratio)
     LPGperc = LPGppm / 10000
-    
+    #Smoke value in ppm
+    SMOKEratio = (ratio - SMOKEb)/SMOKEm
+    SMOKEppm = math.pow(10, SMOKEratio)
+    SMOKEperc = SMOKEppm / 10000
+    #CO value in ppm
+    COratio = (ratio - COb)/COm
+    COppm = math.pow(10, COratio)
+    COperc = COppm / 10000
     
     # Print out the value and delay a second before looping again.
     print("Temperature: {}C {}F".format(temp_C, temp_F))
-    print("LPG%: {}%, LPGppm: {}ppm".format(LPGperc, LPGppm))
+#     print("LPG%: {}%, LPGppm: {}ppm".format(LPGperc, LPGppm))
+    print("COppm: {}ppm, SMOKEppm: {}ppm, LPGppm: {}ppm".format(COppm, SMOKEppm, LPGppm))
+    print("CO%: {}%, SMOKE%: {}%, LPG%: {}%".format(COperc, SMOKEperc, LPGperc))
+    print()
+    print()
     time.sleep(1.0)
