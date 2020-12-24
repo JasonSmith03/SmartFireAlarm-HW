@@ -6,6 +6,13 @@ import board
 import math
 import adafruit_mcp3xxx.mcp3008 as MCP
 from adafruit_mcp3xxx.analog_in import AnalogIn
+from picamera import PiCamera
+from time import sleep
+
+#Threshold values deeming fire to be life threatning
+temperatureThreshold = 27 #actual value: 57
+smokeThreshold = 0.0002 #actual value: 3400
+carbonMonoxideThreshold = 0.0009 #actual value: 35
 
 # create the spi bus
 spi = busio.SPI(clock=board.SCK, MISO=board.MISO, MOSI=board.MOSI)
@@ -19,6 +26,9 @@ mcp = MCP.MCP3008(spi, cs)
 # create an analog input channel on pin 0
 lmt84 = AnalogIn(mcp, MCP.P0)
 mq = AnalogIn(mcp, MCP.P1)
+
+#create camera object
+camera = PiCamera()
 
 # Function to simplify the math of reading the temperature.
 def tmp36_temperature_C(tempSensor):
@@ -90,6 +100,15 @@ while True:
     COratio = (ratio - COb)/COm
     COppm = math.pow(10, COratio)
     COperc = COppm / 10000
+
+    #start camera once dangerous values are read
+    if (temp_C >= temperatureThreshold or SMOKEppm >= smokeThreshold or COppm >= carbonMonoxideThreshold):
+        camera.start_preview()
+        camera.start_recording('/home/pi/Desktop/video.h264') #CHANGE DIRECTORY
+        #note this is currently for testing purposes, will need to define rule set for how long camera stays on and when it turns off
+        sleep(5)
+        camera.stop_recording()
+        camera.stop_preview()
     
     # Print out the value and delay a second before looping again.
     print("Temperature: {}C {}F".format(temp_C, temp_F))
