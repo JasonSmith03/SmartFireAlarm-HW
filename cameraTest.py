@@ -4,7 +4,7 @@ from time import sleep
 camera = PiCamera()
 
 camera.start_preview()
-camera.start_recording('/home/pi/Desktop/video.h264') #change directory
+camera.start_recording('/home/pi/video.h264') #change directory
 sleep(5)
 camera.stop_recording()
 camera.stop_preview()

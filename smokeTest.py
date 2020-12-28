@@ -10,7 +10,7 @@ from picamera import PiCamera
 from time import sleep
 
 #Threshold values deeming fire to be life threatning
-temperatureThreshold = 27 #actual value: 57
+temperatureThreshold = 30 #actual value: 57
 smokeThreshold = 0.0002 #actual value: 3400
 carbonMonoxideThreshold = 0.0009 #actual value: 35
 
@@ -104,9 +104,9 @@ while True:
     #start camera once dangerous values are read
     if (temp_C >= temperatureThreshold or SMOKEppm >= smokeThreshold or COppm >= carbonMonoxideThreshold):
         camera.start_preview()
-        camera.start_recording('/home/pi/Desktop/video.h264') #CHANGE DIRECTORY
+        camera.start_recording('/home/pi/SmartFire/VideoFiles/video.h264') #CHANGE DIRECTORY
         #note this is currently for testing purposes, will need to define rule set for how long camera stays on and when it turns off
-        sleep(5)
+        sleep(10)
         camera.stop_recording()
         camera.stop_preview()
     
