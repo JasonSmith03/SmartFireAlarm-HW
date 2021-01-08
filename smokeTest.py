@@ -70,12 +70,11 @@ while True:
     # lpgM = (math.log10(0.27/0.8))/(math.log10(10000/1000))
     # lpgB = math.log10(0.8) + lpgM * math.log10(1000)
     
+    #Note for each of the variables below: M represents slope and B represents the y intercept of the graphs represented in the mq sensor datasheet
     LPGM = -0.47
     LPGB = 1.31
-    
     SMOKE_M = (math.log10(0.5/1.8))/(math.log10(10000/1000))
     SMOKE_B = math.log10(1.8) + SMOKE_M * math.log10(1000)
-    
     CARBON_MONOXIDE_M = (math.log10(1.5/3.1))/(math.log10(10000/1000))
     CARBON_MONOXIDE_B = math.log10(3.1) + CARBON_MONOXIDE_M * math.log10(1000)
     
