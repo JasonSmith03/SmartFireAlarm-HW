@@ -110,7 +110,7 @@ def main():
         COppm = math.pow(10, COratio)
         COperc = COppm / 10000
 
-        #start camera once dangerous values are read
+        #send get request to google cloud functions and activate fire alarm
         if (temp_C >= temperatureThreshold or SMOKEppm >= smokeThreshold or COppm >= carbonMonoxideThreshold):
             os.system('spd-say "Fire"')
             x = requests.get(gcfURL)
