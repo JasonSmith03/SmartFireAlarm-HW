@@ -9,7 +9,7 @@ import adafruit_mcp3xxx.mcp3008 as MCP
 from adafruit_mcp3xxx.analog_in import AnalogIn
 from time import sleep
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import numpy as np
 
 #######################################Global variables################################################
 #Threshold values deeming fire to be life threatning
@@ -121,33 +121,42 @@ def alertUsers():
     x = requests.get(gcfURL)
     #print(x.status_code)
 
-# def plotData(i, xaxis_time, yaxis_temperature):
+# use ggplot style for more sophisticated visuals
+plt.style.use('ggplot')
 #https://makersportal.com/blog/2018/8/14/real-time-graphing-in-python
 #https://learn.sparkfun.com/tutorials/graph-sensor-data-with-python-and-matplotlib/update-a-graph-in-real-time
-#     # Read temperature (Celsius) from TMP102
-#     temp_c = round(tmp102.read_temp(), 2)
-
-#     # Add x and y to lists
-#     xs.append(dt.datetime.now().strftime('%H:%M:%S.%f'))
-#     ys.append(temp_c)
-
-#     # Limit x and y lists to 20 items
-#     xs = xs[-20:]
-#     ys = ys[-20:]
-
-#     # Draw x and y lists
-#     ax.clear()
-#     ax.plot(xs, ys)
-
-#     # Format plot
-#     plt.xticks(rotation=45, ha='right')
-#     plt.subplots_adjust(bottom=0.30)
-#     plt.title('TMP102 Temperature over Time')
-#     plt.ylabel('Temperature (deg C)')
+def live_plotter(x_vec,y1_data,line1,identifier='Temperature vs Time',pause_time=0.1):
+    if line1==[]:
+        # this is the call to matplotlib that allows dynamic plotting
+        plt.ion()
+        fig = plt.figure(figsize=(13,6))
+        ax = fig.add_subplot(111)
+        # create a variable for the line so we can later update it
+        line1, = ax.plot(x_vec,y1_data,'-o',alpha=0.8)        
+        #update plot label/title
+        plt.ylabel('Temperature (degrees Calsius)')
+        plt.xlabel('Time (ms)')
+        plt.title('Title: {}'.format(identifier))
+        plt.show()
+    
+    # after the figure, axis, and line are created, we only need to update the y-data
+    line1.set_ydata(y1_data)
+    # adjust limits if new data goes beyond bounds
+    if np.min(y1_data)<=line1.axes.get_ylim()[0] or np.max(y1_data)>=line1.axes.get_ylim()[1]:
+        plt.ylim([np.min(y1_data)-np.std(y1_data),np.max(y1_data)+np.std(y1_data)])
+    # this pauses the data so the figure/axis can catch up - the amount of pause can be altered above
+    plt.pause(pause_time)
+    
+    # return line so we can update it again in the next iteration
+    return line1
 
 def main():
     cleanAirResistance = initMQSensor()
 
+    size = 100
+    x_vec = np.linspace(0,1,size+1)[0:-1]
+    y_vec = np.random.randn(len(x_vec))
+    line1 = []
     while True:
         temp_C, temp_F = getTemperature()
         LPGreading = getLPG(cleanAirResistance)
@@ -158,6 +167,11 @@ def main():
             alertUsers()
 
         #WILL REPLACE WITH PLOT DATA
+        y_vec[-1] = temp_C
+        line1 = live_plotter(x_vec,y_vec,line1)
+        y_vec = np.append(y_vec[1:],0.0)
+
+
         # Print out the value and delay a second before looping again.
         print("Temperature: {}C {}F".format(temp_C, temp_F))
         # print("LPG%: {}%, LPGppm: {}ppm".format(LPGperc, LPGppm))
