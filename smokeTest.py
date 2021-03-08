@@ -125,25 +125,25 @@ def alertUsers():
 plt.style.use('ggplot')
 #https://makersportal.com/blog/2018/8/14/real-time-graphing-in-python
 #https://learn.sparkfun.com/tutorials/graph-sensor-data-with-python-and-matplotlib/update-a-graph-in-real-time
-def live_plotter(x_vec,y1_data,line1,identifier='Temperature vs Time',pause_time=0.1):
+def live_plotter(x_vec,temp_data,line1,pause_time=0.1):
     if line1==[]:
         # this is the call to matplotlib that allows dynamic plotting
         plt.ion()
         fig = plt.figure(figsize=(13,6))
         ax = fig.add_subplot(111)
         # create a variable for the line so we can later update it
-        line1, = ax.plot(x_vec,y1_data,'-o',alpha=0.8)        
+        line1, = ax.plot(x_vec,temp_data,'-o', label='temp',alpha=0.8)        
         #update plot label/title
         plt.ylabel('Temperature (degrees Calsius)')
         plt.xlabel('Time (ms)')
-        plt.title('Title: {}'.format(identifier))
+        plt.title('Temperature, Smoke, CO vs Time')
         plt.show()
-    
+        ax.legend(loc='upper left', frameon=False)    
     # after the figure, axis, and line are created, we only need to update the y-data
-    line1.set_ydata(y1_data)
+    line1.set_ydata(temp_data)
     # adjust limits if new data goes beyond bounds
-    if np.min(y1_data)<=line1.axes.get_ylim()[0] or np.max(y1_data)>=line1.axes.get_ylim()[1]:
-        plt.ylim([np.min(y1_data)-np.std(y1_data),np.max(y1_data)+np.std(y1_data)])
+    if np.min(temp_data)<=line1.axes.get_ylim()[0] or np.max(temp_data)>=line1.axes.get_ylim()[1]:
+        plt.ylim([np.min(temp_data)-np.std(temp_data),np.max(temp_data)+np.std(temp_data)])
     # this pauses the data so the figure/axis can catch up - the amount of pause can be altered above
     plt.pause(pause_time)
     
@@ -155,8 +155,9 @@ def main():
 
     size = 100
     x_vec = np.linspace(0,1,size+1)[0:-1]
-    y_vec = np.random.randn(len(x_vec))
+    temp_vec = np.random.randn(len(x_vec))
     line1 = []
+
     while True:
         temp_C, temp_F = getTemperature()
         LPGreading = getLPG(cleanAirResistance)
@@ -167,9 +168,9 @@ def main():
             alertUsers()
 
         #WILL REPLACE WITH PLOT DATA
-        y_vec[-1] = temp_C
-        line1 = live_plotter(x_vec,y_vec,line1)
-        y_vec = np.append(y_vec[1:],0.0)
+        temp_vec[-1] = temp_C
+        line1 = live_plotter(x_vec,temp_vec,line1)
+        temp_vec = np.append(temp_vec[1:],0.0)
 
 
         # Print out the value and delay a second before looping again.
