@@ -39,16 +39,6 @@ mq = AnalogIn(mcp, MCP.P1)
 #google cloud functions server endpoint designated to device ID
 gcfURL = 'https://us-central1-smartfire-3e198.cloudfunctions.net/alarm?deviceId=10000000630c3886'
 
-#Plot sensor readings as a function of time 
-size = 100
-x_vec = np.linspace(0,1,size+1)[0:-1]
-y_vec = np.random.randn(len(x_vec))
-y2_vec = np.random.randn(len(x_vec))
-y3_vec = np.random.randn(len(x_vec))
-line1 = []
-line2 = []
-line3 = []
-plt.style.use('ggplot')
 #######################################################################################################
 
 # initializes MQ sensor and returns the the clean air resistance value.
@@ -125,7 +115,7 @@ def alertUsers():
     x = requests.get(gcfURL)
     #print(x.status_code)
 
-def live_plotter(x_vec,y1_data,line1,identifier='',pause_time=0.1):
+def live_plotter(x_vec,y1_data,line1,title,ylabel,pause_time=0.1):
     if line1==[]:
         # this is the call to matplotlib that allows dynamic plotting
         plt.ion()
@@ -134,8 +124,9 @@ def live_plotter(x_vec,y1_data,line1,identifier='',pause_time=0.1):
         # create a variable for the line so we can later update it
         line1, = ax.plot(x_vec,y1_data,'-o',alpha=0.8)        
         #update plot label/title
-        plt.ylabel('Y Label')
-        plt.title('Title: {}'.format(identifier))
+        plt.ylabel(ylabel)
+        plt.xlabel('Time (second)')
+        plt.title(title)
         plt.show()
     
     # after the figure, axis, and line are created, we only need to update the y-data
@@ -154,6 +145,16 @@ def live_plotter(x_vec,y1_data,line1,identifier='',pause_time=0.1):
 def main():
     cleanAirResistance = initMQSensor()
     
+    size = 100
+    x_vec = np.linspace(0,1,size+1)[0:-1]
+    y_vec = np.random.randn(len(x_vec))
+    y2_vec = np.random.randn(len(x_vec))
+    y3_vec = np.random.randn(len(x_vec))
+    line1 = []
+    line2 = []
+    line3 = []
+    plt.style.use('ggplot')
+
     while True:
         temp_C, temp_F = getTemperature()
         LPGreading = getLPG(cleanAirResistance)
