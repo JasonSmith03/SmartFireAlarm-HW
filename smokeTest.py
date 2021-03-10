@@ -43,7 +43,7 @@ gcfURL = 'https://us-central1-smartfire-3e198.cloudfunctions.net/alarm?deviceId=
 
 #Plot sensor readings as a function of time 
 xaxis_time = []
-yaxis_temperature = 0]
+yaxis_temperature = []
 yaxis_smoke = []
 yaxis_co = []
 index=count()
