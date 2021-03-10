@@ -8,9 +8,10 @@ import requests
 import adafruit_mcp3xxx.mcp3008 as MCP
 from adafruit_mcp3xxx.analog_in import AnalogIn
 from time import sleep
+from itertools import count
 import matplotlib.pyplot as plt
-import numpy as np
-
+import pandas as pd
+from matplotlib.animation import FuncAnimation
 #######################################Global variables################################################
 #Threshold values deeming fire to be life threatning
 
@@ -40,11 +41,12 @@ mq = AnalogIn(mcp, MCP.P1)
 #google cloud functions server endpoint designated to device ID
 gcfURL = 'https://us-central1-smartfire-3e198.cloudfunctions.net/alarm?deviceId=10000000630c3886'
 
-#Plot temperature as a function of time 
-fig = plt.figure()
-updateAxes = fig.add_subplot(1, 1, 1)
+#Plot sensor readings as a function of time 
 xaxis_time = []
-yaxis_temperature = []
+yaxis_temperature = 0]
+yaxis_smoke = []
+yaxis_co = []
+index=count()
 #######################################################################################################
 
 # initializes MQ sensor and returns the the clean air resistance value.
@@ -121,47 +123,38 @@ def alertUsers():
     x = requests.get(gcfURL)
     #print(x.status_code)
 
-# use ggplot style for more sophisticated visuals
-plt.style.use('ggplot')
-#https://makersportal.com/blog/2018/8/14/real-time-graphing-in-python
-#https://learn.sparkfun.com/tutorials/graph-sensor-data-with-python-and-matplotlib/update-a-graph-in-real-time
-def live_plotter(x_vec,y1_data,line1,identifier,ylabel,color,pause_time=0.1):
-    if line1==[]:
-        # this is the call to matplotlib that allows dynamic plotting
-        plt.ion()
-        fig = plt.figure(figsize=(13,6))
-        ax = fig.add_subplot(111)
-        # create a variable for the line so we can later update it
-        line1, = ax.plot(x_vec,y1_data,color,alpha=0.8)        
-        #update plot label/title
-        plt.ylabel(ylabel)
-        plt.xlabel('Time (ms)')
-        plt.title('Title: {}'.format(identifier))
-        plt.show()
+def animate(i):
+    #https://makersportal.com/blog/2018/8/14/real-time-graphing-in-python
+    #https://learn.sparkfun.com/tutorials/graph-sensor-data-with-python-and-matplotlib/update-a-graph-in-real-time
+    xaxis_time.append(next(index))
+
+    tempC, tempF=getTemperature()
+    yaxis_temperature.append(tempC)
+
+    plt.plot(xaxis_time, yaxis_temperature)
+
     
-    # after the figure, axis, and line are created, we only need to update the y-data
-    line1.set_ydata(y1_data)
-    # adjust limits if new data goes beyond bounds
-    if np.min(y1_data)<=line1.axes.get_ylim()[0] or np.max(y1_data)>=line1.axes.get_ylim()[1]:
-        plt.ylim([np.min(y1_data)-np.std(y1_data),np.max(y1_data)+np.std(y1_data)])
-    # this pauses the data so the figure/axis can catch up - the amount of pause can be altered above
-    plt.pause(pause_time)
-    
-    # return line so we can update it again in the next iteration
-    return line1
 
 def main():
     cleanAirResistance = initMQSensor()
 
-    size = 100
-    x_vec = np.linspace(0,1,size+1)[0:-1]
-    temp_vec = np.random.randn(len(x_vec))
-    line1 = []
-    smoke_vec = np.random.randn(len(x_vec))
-    line2 = []
-    co_vec = np.random.randn(len(x_vec))
-    line3 = []
+    # tempFig, ax1 = plt.subplots()
+    # gasFig, ax2 = plt2.subplots()
+    
+    # ax1.legend()
+    # ax1.set_title('Temperature vs Time')
+    # ax1.set_ylabel('Temperature(degrees Celsius)')
+    # ax1.set_xlabel('Time(ms)')
 
+    # ax2.legend()
+    # ax1.set_title('Smoke, CO vs Time')
+    # ax1.set_ylabel('Gas(ppm)')
+    # ax1.set_xlabel('Time(ms)')
+
+    ani = FuncAnimation(plt.gcf(), animate, interval=1000)
+    plt.tight_layout()
+    plt.show()
+    
     while True:
         temp_C, temp_F = getTemperature()
         LPGreading = getLPG(cleanAirResistance)
@@ -169,29 +162,12 @@ def main():
         COreading = getCO(cleanAirResistance)
 
         if (dangerous(temp_C, smokeReading, COreading)):
-            alertUsers()
-
-        #plot temperature
-        temp_vec[-1] = temp_C
-        line1 = live_plotter(x_vec,temp_vec,line1, 'Temperature vs Time', 'Temperature (degrees Celsius)', '-o')
-        temp_vec = np.append(temp_vec[1:],0.0)
-
-        #plot smoke
-        smoke_vec[-1] = smokeReading
-        line2 = live_plotter(x_vec,temp_vec,line2, 'Smoke vs Time', 'Smoke (ppm)', '-b')
-        smoke_vec = np.append(smoke_vec[1:],0.0)
-
-        #plot CO
-        co_vec[-1] = COreading
-        line3 = live_plotter(x_vec,co_vec,line3, 'CO vs Time', 'CO (ppm)', '-g')
-        co_vec = np.append(co_vec[1:],0.0)
+            alertUsers()        
 
         # Print out the value and delay a second before looping again.
         print("Temperature: {}C {}F".format(temp_C, temp_F))
         # print("LPG%: {}%, LPGppm: {}ppm".format(LPGperc, LPGppm))
         print("COppm: {}ppm, SMOKEppm: {}ppm, LPGppm: {}ppm".format(COreading, smokeReading, LPGreading))
-        print()
-        print()
         time.sleep(1.0)
 
 if __name__ == '__main__':
