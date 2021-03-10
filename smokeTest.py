@@ -162,19 +162,17 @@ def main():
 
         if (dangerous(temp_C, smokeReading, COreading)):
             alertUsers()   
-
-        rand_val = np.random.randn(1)
     
-        y_vec[-1] = rand_val
-        line1 = live_plotter(x_vec,y_vec,line1)
+        y_vec[-1] = temp_C
+        line1 = live_plotter(x_vec,y_vec,line1, 'Temperature vs Time', 'Temperature(degrees Celsius)')
         y_vec = np.append(y_vec[1:],0.0)
 
-        y2_vec[-1] = rand_val
-        line2 = live_plotter(x_vec,y2_vec,line2)
+        y2_vec[-1] = smokeReading
+        line2 = live_plotter(x_vec,y2_vec,line2, 'Smoke vs Time', 'Smoke(ppm)')
         y2_vec = np.append(y2_vec[1:],0.0)
 
-        y3_vec[-1] = rand_val
-        line3 = live_plotter(x_vec,y3_vec,line3)
+        y3_vec[-1] = COreading
+        line3 = live_plotter(x_vec,y3_vec,line3, 'CO vs Time', 'CO(ppm)')
         y3_vec = np.append(y3_vec[1:],0.0)     
 
         # Print out the value and delay a second before looping again.
