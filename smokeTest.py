@@ -5,15 +5,16 @@ import digitalio
 import board
 import math
 import requests
+import datetime as dt
 import adafruit_mcp3xxx.mcp3008 as MCP
 from adafruit_mcp3xxx.analog_in import AnalogIn
-from time import sleep
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 #######################################Global variables################################################
 #Threshold values deeming fire to be life threatning
 
-temperatureThreshold = 33 #actual value: 57
+temperatureThreshold = 35 #actual value: 57
 smokeThreshold = 0.0002 #actual value: 3400
 carbonMonoxideThreshold = 0.0009 #actual value: 35
 LPGm = -0.47
@@ -22,6 +23,7 @@ SMOKEm = (math.log10(0.5/1.8))/(math.log10(10000/1000))
 SMOKEb = math.log10(1.8) + SMOKEm * math.log10(1000)
 COm = (math.log10(1.5/3.1))/(math.log10(10000/1000))
 COb = math.log10(3.1) + COm * math.log10(1000)
+cleanAirResistance = 1
 
 # create the spi bus
 spi = busio.SPI(clock=board.SCK, MISO=board.MISO, MOSI=board.MOSI)
@@ -39,6 +41,16 @@ mq = AnalogIn(mcp, MCP.P1)
 #google cloud functions server endpoint designated to device ID
 gcfURL = 'https://us-central1-smartfire-3e198.cloudfunctions.net/alarm?deviceId=10000000630c3886'
 
+#Graphing Data
+fig = plt.figure()
+temp_ax = fig.add_subplot(3, 1, 1)
+smoke_ax = fig.add_subplot(3, 1, 2)
+co_ax = fig.add_subplot(3, 1, 3)
+
+xs = []
+temp_ys = []
+smoke_ys = []
+co_ys = []
 #######################################################################################################
 
 # initializes MQ sensor and returns the the clean air resistance value.
@@ -56,7 +68,6 @@ def initMQSensor():
     rsAir = ((3.3 * 10) / mq.voltage) - 10 #3.3 volts and 10RL taken from the datasheet
     #calculate resistance in clean air from RS using air value
     cleanAirResistance = rsAir/9.9
-    return cleanAirResistance
 
 # Converts lmt84 reading from volts to temperature in degrees Celsius.
 def getTemperature():
@@ -66,10 +77,13 @@ def getTemperature():
     milliVolts = (lmt84.voltage) * 1000
     temp_C = ((5.506 - math.sqrt(math.pow(-5.506, 2) + (4 * 0.00176 * (870.6 - milliVolts))))/(2 * -0.00176)) + 30 #LMT84 temp sensor transfer function
     temp_F = (temp_C * 9/5) + 32
-    return temp_C, temp_F
+    if (temp_C >= temperatureThreshold):
+        alertUsers()
+    print("Temperature: {}C {}F".format(temp_C, temp_F))
+    return temp_C
 
 #returns the ratio value used in all sensor readings below
-def getRatio(cleanAirResistance):
+def getRatio():
     #RS calculation from detection
     rsGas = ((3.3 * 10) / mq.voltage) - 10
     #log of ratio to calculate ppm
@@ -77,8 +91,8 @@ def getRatio(cleanAirResistance):
     return ratio
 
 # returns the LPG sensor reading
-def getLPG(cleanAirResistance):
-    ratio = getRatio(cleanAirResistance)
+def getLPG():
+    ratio = getRatio()
     #LPG value in ppm
     LPGratio = (ratio - LPGb)/LPGm
     LPGppm = math.pow(10, LPGratio)
@@ -86,28 +100,28 @@ def getLPG(cleanAirResistance):
     return LPGppm
 
 # returns the smoke sensor reading
-def getSmoke(cleanAirResistance):
-    ratio = getRatio(cleanAirResistance)
+def getSmoke():
+    ratio = getRatio()
     #Smoke value in ppm
     SMOKEratio = (ratio - SMOKEb)/SMOKEm
     SMOKEppm = math.pow(10, SMOKEratio)
     SMOKEperc = SMOKEppm / 10000
+    if(SMOKEppm >= smokeThreshold):
+        alertUsers()
+    print("SMOKEppm: {}ppm".format(SMOKEppm))
     return SMOKEppm
 
 # returns the Carbon Monoxide reading
-def getCO(cleanAirResistance):
-    ratio = getRatio(cleanAirResistance)
+def getCO():
+    ratio = getRatio()
     #CO value in ppm
     COratio = (ratio - COb)/COm
     COppm = math.pow(10, COratio)
     COperc = COppm / 10000
+    if(COppm >= carbonMonoxideThreshold):
+        alertUsers()
+    print("COppm: {}ppm \n".format(COppm))
     return COppm
-
-# check sensor readings against threshold values
-def dangerous(temp_C, smokeReading, COreading):
-    if (temp_C >= temperatureThreshold or smokeReading >= smokeThreshold or COreading >= carbonMonoxideThreshold):
-        return True
-    return False
 
 #send get request to google cloud functions to alert users of danger
 def alertUsers():
@@ -115,72 +129,57 @@ def alertUsers():
     x = requests.get(gcfURL)
     #print(x.status_code)
 
-def live_plotter(x_vec,y1_data,line1,title,ylabel,pause_time=0.1):
-    if line1==[]:
-        # this is the call to matplotlib that allows dynamic plotting
-        plt.ion()
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        # create a variable for the line so we can later update it
-        line1, = ax.plot(x_vec,y1_data,'-o',alpha=0.8)        
-        #update plot label/title
-        plt.ylabel(ylabel)
-        plt.xlabel('Time (second)')
-        plt.title(title)
-        plt.show()
+# This function is called periodically from FuncAnimation
+def animate(i, xs, temp_ys, smoke_ys, co_ys):
+# https://learn.sparkfun.com/tutorials/graph-sensor-data-with-python-and-matplotlib/update-a-graph-in-real-time
+
+    # Add x and y to lists
+    localtime = dt.datetime.now().strftime('%H:%M:%S.')
+    xs.append(localtime)
+    temp_ys.append(getTemperature())
+    smoke_ys.append(getSmoke())
+    co_ys.append(getCO())
+
+
+    # Limit x and y lists to 20 items
+    xs = xs[-20:]
+    temp_ys = temp_ys[-20:]
+    smoke_ys = smoke_ys[-20:]
+    co_ys = co_ys[-20:]
     
-    # after the figure, axis, and line are created, we only need to update the y-data
-    line1.set_ydata(y1_data)
-    # adjust limits if new data goes beyond bounds
-    if np.min(y1_data)<=line1.axes.get_ylim()[0] or np.max(y1_data)>=line1.axes.get_ylim()[1]:
-        plt.ylim([np.min(y1_data)-np.std(y1_data),np.max(y1_data)+np.std(y1_data)])
-    # this pauses the data so the figure/axis can catch up - the amount of pause can be altered above
-    plt.pause(pause_time)
     
-    # return line so we can update it again in the next iteration
-    return line1
+    
+    # Draw x and y lists
+    temp_ax.clear()
+    temp_ax.plot(xs, temp_ys, color='red')
+    temp_ax.axes.xaxis.set_visible(False)
+    temp_ax.set_title('Temperature vs Time')
+    temp_ax.set_ylabel('Temperature (deg C)')
 
     
+    smoke_ax.clear()
+    smoke_ax.plot(xs, smoke_ys)
+    smoke_ax.axes.xaxis.set_visible(False)
+    smoke_ax.set_title('Smoke vs Time')
+    smoke_ax.set_ylabel('Smoke (ppm)')
 
+    co_ax.clear()
+    co_ax.plot(xs, co_ys, color='green')
+    plt.xticks(rotation=45, ha='right')
+    plt.subplots_adjust(bottom=0.30)
+    co_ax.set_title('CO vs Time')
+    co_ax.set_xlabel('Time (H:M:S)')
+    co_ax.set_ylabel('CO (ppm)')
+    
+    fig.tight_layout(pad=3.0)
+    
 def main():
-    cleanAirResistance = initMQSensor()
+    initMQSensor()
     
-    size = 100
-    x_vec = np.linspace(0,1,size+1)[0:-1]
-    y_vec = np.random.randn(len(x_vec))
-    y2_vec = np.random.randn(len(x_vec))
-    y3_vec = np.random.randn(len(x_vec))
-    line1 = []
-    line2 = []
-    line3 = []
-    plt.style.use('ggplot')
-
-    while True:
-        temp_C, temp_F = getTemperature()
-        LPGreading = getLPG(cleanAirResistance)
-        smokeReading = getSmoke(cleanAirResistance)
-        COreading = getCO(cleanAirResistance)
-
-        if (dangerous(temp_C, smokeReading, COreading)):
-            alertUsers()   
+    ani = animation.FuncAnimation(fig, animate, fargs=(xs,temp_ys,smoke_ys,co_ys), interval=1000)
+    plt.show()
     
-        y_vec[-1] = temp_C
-        line1 = live_plotter(x_vec,y_vec,line1, 'Temperature vs Time', 'Temperature(degrees Celsius)')
-        y_vec = np.append(y_vec[1:],0.0)
-
-        y2_vec[-1] = smokeReading
-        line2 = live_plotter(x_vec,y2_vec,line2, 'Smoke vs Time', 'Smoke(ppm)')
-        y2_vec = np.append(y2_vec[1:],0.0)
-
-        y3_vec[-1] = COreading
-        line3 = live_plotter(x_vec,y3_vec,line3, 'CO vs Time', 'CO(ppm)')
-        y3_vec = np.append(y3_vec[1:],0.0)     
-
-        # Print out the value and delay a second before looping again.
-        print("Temperature: {}C {}F".format(temp_C, temp_F))
-        # print("LPG%: {}%, LPGppm: {}ppm".format(LPGperc, LPGppm))
-        print("COppm: {}ppm, SMOKEppm: {}ppm, LPGppm: {}ppm".format(COreading, smokeReading, LPGreading))
-        time.sleep(1.0)
+    
 
 if __name__ == '__main__':
     main()
