@@ -14,7 +14,7 @@ import numpy as np
 #######################################Global variables################################################
 #Threshold values deeming fire to be life threatning
 
-temperatureThreshold = 35 #actual value: 57
+temperatureThreshold = 43 #actual value: 57
 smokeThreshold = 0.0002 #actual value: 3400
 carbonMonoxideThreshold = 0.0009 #actual value: 35
 LPGm = -0.47
@@ -24,7 +24,7 @@ SMOKEb = math.log10(1.8) + SMOKEm * math.log10(1000)
 COm = (math.log10(1.5/3.1))/(math.log10(10000/1000))
 COb = math.log10(3.1) + COm * math.log10(1000)
 cleanAirResistance = 1
-
+smsCounter = 0
 # create the spi bus
 spi = busio.SPI(clock=board.SCK, MISO=board.MISO, MOSI=board.MOSI)
 
@@ -60,6 +60,7 @@ def initMQSensor():
     Authors: Jason Smith
              Bradley Rose
     '''
+    smsCounter=0
     mqSensor=0
     for i in range(0, 500):
         mqSensor += mq.value #calibration
@@ -90,15 +91,6 @@ def getRatio():
     ratio = math.log10(rsGas/cleanAirResistance)
     return ratio
 
-# returns the LPG sensor reading
-def getLPG():
-    ratio = getRatio()
-    #LPG value in ppm
-    LPGratio = (ratio - LPGb)/LPGm
-    LPGppm = math.pow(10, LPGratio)
-    LPGperc = LPGppm / 10000
-    return LPGppm
-
 # returns the smoke sensor reading
 def getSmoke():
     ratio = getRatio()
@@ -124,9 +116,14 @@ def getCO():
     return COppm
 
 #send get request to google cloud functions to alert users of danger
+
 def alertUsers():
+    global smsCounter
     os.system('spd-say "Fire"')
-    x = requests.get(gcfURL)
+    if (smsCounter < 2):
+        x = requests.get(gcfURL)
+        smsCounter = smsCounter + 1
+        print("SMS COUNTER: {}".format(smsCounter))
     #print(x.status_code)
 
 # This function is called periodically from FuncAnimation
